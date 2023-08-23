@@ -19,6 +19,11 @@ twitter_consumer_secret = os.getenv("TWITTER_CONSUMER_SECRET")
 twitter_access_token = os.getenv("TWITTER_ACCESS_TOKEN")
 twitter_access_token_secret = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
 
+# Initialize Twitter API client
+auth = tweepy.OAuthHandler(twitter_consumer_key, twitter_consumer_secret)
+auth.set_access_token(twitter_access_token, twitter_access_token_secret)
+twitter_api = tweepy.API(auth)
+
 # Function to generate tweets using OpenAI
 
 # Function to fetch a news article from your database (simulated)
