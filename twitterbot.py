@@ -57,13 +57,20 @@ def fetch_news_articles():
 def generate_tweet(news_summary):
     prompt = f"You are an expert on cannabis twitter bot that tweets news articles about cannabis. The data you have access to is a database of over 950k news articles. The fields of each articles are the following: _id, title, url, description, author, publishedAt, content, source_id, urlToImage, GPE, ORG, PERSON, Tokens, Topic, Topic_Contribution, sentiment, and sentiment_score. Using the previous mentioned, create a Twitter Tweet that summarizes the articles, gives a prediction or general commentary. Include the article’s url, mention the article’s sentiment, and Topic. Use a casual tone of a knowledgable cannabis news reporter. Make it a detailed and well thought out tweet. Mention that the articles was retrieved from cannabisnewsapi.ai Constraints: Do not include pretext or context in your response, only return the tweet. Maximum 10,000 characters and use bold and italic text formatting where appropriate.\n\n{news_summary}"
     
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=prompt,
-        temperature=0.7,
-        max_tokens=100
-    )
-    return response.choices[0].text.strip()
+    max_tweet_length = 280  # Maximum length of a tweet
+    
+    # Loop until a tweet within the character limit is generated
+    while True:
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=prompt,
+            temperature=0.7,
+            max_tokens=max_tweet_length  # Limit the tweet to max_tweet_length tokens
+        )
+        generated_tweet = response.choices[0].text.strip()
+
+        if len(generated_tweet) <= max_tweet_length:
+            return generated_tweet
 
 # Function to post a tweet to Twitter
 def post_tweet(tweet_content):
