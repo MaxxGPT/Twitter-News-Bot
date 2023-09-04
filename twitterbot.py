@@ -23,11 +23,10 @@ twitter_consumer_key = os.getenv("TWITTER_CONSUMER_KEY")
 twitter_consumer_secret = os.getenv("TWITTER_CONSUMER_SECRET")
 twitter_access_token = os.getenv("TWITTER_ACCESS_TOKEN")
 twitter_access_token_secret = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
+twitter_bearer_token = os.getenv("TWITTER_BEARER_TOKEN")
 
 # Initialize Twitter API client
-auth = tweepy.OAuthHandler(twitter_consumer_key, twitter_consumer_secret)
-auth.set_access_token(twitter_access_token, twitter_access_token_secret)
-twitter_api = tweepy.API(auth)
+twitter_api = tweepy.Client(twitter_bearer_token, twitter_consumer_key, twitter_consumer_secret, twitter_access_token, twitter_access_token_secret, wait_on_rate_limit=False)
 
 # Function to fetch a news article from your database
 def fetch_news_articles():
@@ -69,8 +68,11 @@ def generate_tweet(news_summary):
 # Function to post a tweet to Twitter
 def post_tweet(tweet_content):
     try:
+        # Print the length of the tweet content
+        print("Tweet Content Length:", len(tweet_content))
+        
         # Post the tweet using Tweepy
-        twitter_api.update_status(status=tweet_content)
+        response = twitter_api.create_tweet(text=tweet_content)
         print("Tweet posted successfully:", tweet_content)
     except tweepy.errors.TweepyException as e:
         print("Error posting tweet:", e)
