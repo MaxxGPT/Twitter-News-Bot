@@ -6,6 +6,7 @@ import random
 from requests.auth import HTTPBasicAuth
 import requests
 from dotenv import load_dotenv
+import openai
 
 # Load environment variables from .env file
 load_dotenv()
@@ -30,14 +31,36 @@ twitter_api = tweepy.API(auth)
 
 # Function to fetch a news article from your database
 def fetch_news_articles():
-    params = {"limit": 1}
-    headers = {'Accept': 'application/json'}
-    auth = HTTPBasicAuth("apikey", cannabis_news_api_key)
+    params = {"limit": 1, "ORG": "Weedmaps"}
+    headers = {'Accept': 'application/json', 'apikey': cannabis_news_api_key}
+    
 
-    req = requests.get(cannabis_news_endpoint, params=params, headers=headers, auth=auth)
-    response.raise_for_status() # Raise an exception for HTTP error
+    try:
+        response = requests.get(cannabis_news_endpoint, params=params, headers=headers)
+        response.raise_for_status()  # Raise an exception for HTTP error
+
+        # Check if the response status code is 200 (OK)
+        if response.status_code == 200:
+            # Parse the JSON response
+            articles = response.json()
+
+            # Print the entire articles list to inspect its structure
+            print("Fetched Articles:")
+            print(articles)
+        else:
+            print("Failed to retrieve articles. Status Code:", response.status_code)
+    
+    except requests.exceptions.RequestException as e:
+        print("Error fetching news articles:", e)
 
         
 # Function to generate tweets using OpenAI
 
 # Main function
+
+def main():
+    # Fetch a news article from your database
+    fetch_news_articles()
+
+if __name__ == "__main__":
+    main()
