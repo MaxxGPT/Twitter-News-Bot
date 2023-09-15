@@ -40,35 +40,60 @@ def fetch_news_articles():
         # Check if the response status code is 200 (OK)
         if response.status_code == 200:
             # Parse the JSON response
-            articles = response.json()
+            json_response = response.json()
 
-            # Print the entire articles list to inspect its structure
+            # Extract the first article from the articles list
+            article = json_response['articles'][0]
+
+            # Create a dictionary with the data you want to use
+            article_data = {
+                "title": article['title'],
+                "url": article['url'],
+                "description": article['description'],
+                "author": article['author'],
+                "publishedAt": article['publishedAt'],
+                "content": article['content'],
+                "image_url": article['urlToImage'],
+                "topic": article['Topic'],
+                "sentiment": article['sentiment'],
+            }
+
             print("Fetched Articles:")
-            print(articles)
+            print(article_data)
+            
+            # Return the article_data dictionary
+            return article_data
         else:
             print("Failed to retrieve articles. Status Code:", response.status_code)
-    
+            return None
     except requests.exceptions.RequestException as e:
         print("Error fetching news articles:", e)
+        return None
+
+
 
         
 # Function to generate tweets using OpenAI
 
-def generate_tweet(news_summary):
-    prompt = f"You are an expert on cannabis twitter bot that tweets news articles about cannabis. The data you have access to is a database of over 950k news articles. The fields of each articles are the following: _id, title, url, description, author, publishedAt, content, source_id, urlToImage, GPE, ORG, PERSON, Tokens, Topic, Topic_Contribution, sentiment, and sentiment_score. Using the previous mentioned, create a Twitter Tweet that summarizes the articles, gives a prediction or general commentary. Include the article’s url, mention the article’s sentiment, and Topic. Use a casual tone of a knowledgable cannabis news reporter. Make it a detailed and well thought out tweet. Mention that the articles was retrieved from cannabisnewsapi.ai Constraints: Do not include pretext or context in your response, only return the tweet. Maximum 10,000 characters and use bold and italic text formatting where appropriate.\n\n{news_summary}"
-    
-    max_tweet_length = 280  # Maximum length of a tweet
-    
+def generate_tweet(article_data):
+    prompt = (f"You are a cannabis news reporter. Summarize the following news article in a casual tone "
+              f"and provide a general commentary or prediction based on the title, URL, sentiment, and topic. "
+              f"\n\nTitle: {article_data['title']}\nURL: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}\n"
+              f"\nGenerate a tweet mentioning that the article was retrieved from cannabisnewsapi.ai and includes the article's URL.")
+
+    max_tweet_length = 280  # Maximum length of a tweet in characters
+
     # Loop until a tweet within the character limit is generated
     while True:
         response = openai.Completion.create(
             engine="text-davinci-003",
             prompt=prompt,
             temperature=0.7,
-            max_tokens=max_tweet_length  # Limit the tweet to max_tweet_length tokens
+            max_tokens=50  # Limit the tweet to a reasonable number of tokens to avoid very long outputs
         )
         generated_tweet = response.choices[0].text.strip()
 
+        # Check if the generated tweet is within the allowed character limit
         if len(generated_tweet) <= max_tweet_length:
             return generated_tweet
 
@@ -89,18 +114,19 @@ def post_tweet(tweet_content):
 
 def main():
     # Fetch a news article from your database
-    fetch_news_articles()
+    article_data = fetch_news_articles()
 
-    # Generate a tweet based on the news article
-    news_summary = "Here is a summary of the news article you fetched."
-    tweet = generate_tweet(news_summary)
+    if article_data:
+        # Generate a tweet based on the news article
+        tweet = generate_tweet(article_data)
 
-    # Print the generated tweet
-    print("Generated Tweet:")
-    print(tweet)
+        # Print the generated tweet
+        print("Generated Tweet:")
+        print(tweet)
 
-    # Post the generated tweet to Twitter
-    post_tweet(tweet)
+        # Post the generated tweet to Twitter
+        post_tweet(tweet)
+
 
 if __name__ == "__main__":
     main()
