@@ -7,6 +7,7 @@ from requests.auth import HTTPBasicAuth
 import requests
 from dotenv import load_dotenv
 import openai
+import re
 
 # Load environment variables from .env file
 load_dotenv()
@@ -56,6 +57,10 @@ def fetch_news_articles():
                 "image_url": article['urlToImage'],
                 "topic": article['Topic'],
                 "sentiment": article['sentiment'],
+                "summarization": article['summarization'],
+                "GPE": article['GPE'],
+                "ORG": article['ORG'],
+                "PERSON": article['PERSON'],
             }
 
             print("Fetched Articles:")
@@ -70,16 +75,24 @@ def fetch_news_articles():
         print("Error fetching news articles:", e)
         return None
 
-
-
-        
 # Function to generate tweets using OpenAI
-
 def generate_tweet(article_data):
-    prompt = (f"You are a cannabis news reporter. Summarize the following news article in a casual tone "
-              f"and provide a general commentary or prediction based on the title, URL, sentiment, and topic. "
-              f"\n\nTitle: {article_data['title']}\nURL: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}\n"
-              f"\nGenerate a tweet mentioning that the article was retrieved from cannabisnewsapi.ai and includes the article's URL.")
+    topic_hashtag_map = {
+        "Business": "#Business",
+        "Crime": "#Crime",
+        "Politics": "#Politics",
+        "Consumer": "#Consumer"
+    }
+
+    # Get the hashtag based on the topic
+    topic_hashtag = topic_hashtag_map.get(article_data['topic'], "")
+    
+    prompt = (f"Hey there! You're an AI helping users craft casual and chatty tweets to share cannabis news articles sourced from CannabisNewsAPI.ai. "
+              f"Bring out the inner chat in you while creating a tweet based on the following details:\n\n"
+              f"Title: {article_data['title']}\nURL: {article_data['url']}\n"
+              f"Sentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}\n\n"
+              f"Remember, the goal is to foster a friendly and engaging conversation around the article while encouraging people to read more on the website. "
+              f"Don't forget to add a shoutout to developers encouraging them to explore the API for awesome cannabis news data!")
 
     max_tweet_length = 280  # Maximum length of a tweet in characters
 
@@ -89,13 +102,20 @@ def generate_tweet(article_data):
             engine="text-davinci-003",
             prompt=prompt,
             temperature=0.7,
-            max_tokens=50  # Limit the tweet to a reasonable number of tokens to avoid very long outputs
+            max_tokens=70  # Limit the tweet to a reasonable number of tokens to avoid very long outputs
         )
         generated_tweet = response.choices[0].text.strip()
+
+        # Remove any hashtags that were generated
+        generated_tweet = re.sub(r"#\w+", "", generated_tweet)
+
+        # Add the official hashtags at the end of the tweet
+        generated_tweet += f" #Cannabis #Weed {topic_hashtag}"
 
         # Check if the generated tweet is within the allowed character limit
         if len(generated_tweet) <= max_tweet_length:
             return generated_tweet
+
 
 # Function to post a tweet to Twitter
 def post_tweet(tweet_content):
@@ -111,7 +131,6 @@ def post_tweet(tweet_content):
 
 
 # Main function
-
 def main():
     # Fetch a news article from your database
     article_data = fetch_news_articles()
