@@ -76,6 +76,9 @@ def fetch_news_articles():
         return None
 
 # Function to generate tweets using OpenAI
+import openai
+import re
+
 def generate_tweet(article_data):
     topic_hashtag_map = {
         "Business": "#Business",
@@ -87,12 +90,11 @@ def generate_tweet(article_data):
     # Get the hashtag based on the topic
     topic_hashtag = topic_hashtag_map.get(article_data['topic'], "")
     
-    prompt = (f"Hey there! You're an AI helping users craft casual and chatty tweets to share cannabis news articles sourced from CannabisNewsAPI.ai. "
-              f"Bring out the inner chat in you while creating a tweet based on the following details:\n\n"
-              f"Title: {article_data['title']}\nURL: {article_data['url']}\n"
-              f"Sentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}\n\n"
-              f"Remember, the goal is to foster a friendly and engaging conversation around the article while encouraging people to read more on the website. "
-              f"Don't forget to add a shoutout to developers encouraging them to explore the API for awesome cannabis news data!")
+    prompt = (f"You're a digital cannabis news reporter and your task is to create an engaging tweet about a recent article. "
+              f"Start with a hook or the article's title to grab attention. Provide a snippet or your take on the news. "
+              f"Encourage people to read the full story using the URL. And remember to let them know the sentiment and topic of the article.\n\n"
+              f"Title: {article_data['title']}\nURL: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}\n"
+              f"\nGenerate a tweet that is friendly and encourages readers to learn more from the article's URL.")
 
     max_tweet_length = 280  # Maximum length of a tweet in characters
 
@@ -102,19 +104,27 @@ def generate_tweet(article_data):
             engine="text-davinci-003",
             prompt=prompt,
             temperature=0.7,
-            max_tokens=70  # Limit the tweet to a reasonable number of tokens to avoid very long outputs
+            max_tokens=90  # Limit the tweet to a reasonable number of tokens to avoid very long outputs
         )
         generated_tweet = response.choices[0].text.strip()
 
         # Remove any hashtags that were generated
         generated_tweet = re.sub(r"#\w+", "", generated_tweet)
 
-        # Add the official hashtags at the end of the tweet
-        generated_tweet += f" #Cannabis #Weed {topic_hashtag}"
+        # Add the sentiment and topic lines at the end of the tweet, on their own lines
+        generated_tweet += f"\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}"
+        
+        # Adding the topic hashtag within the tweet body
+        generated_tweet = generated_tweet.replace(article_data['topic'], topic_hashtag)
+
+        # Add general hashtags at the end of the tweet, on their own lines
+        generated_tweet += "\n#Cannabis #Weed"
 
         # Check if the generated tweet is within the allowed character limit
         if len(generated_tweet) <= max_tweet_length:
             return generated_tweet
+
+
 
 
 # Function to post a tweet to Twitter
