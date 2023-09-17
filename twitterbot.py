@@ -31,7 +31,7 @@ twitter_api = tweepy.Client(twitter_bearer_token, twitter_consumer_key, twitter_
 
 # Function to fetch a news article from your database
 def fetch_news_articles():
-    params = {"limit": 1, "ORG": "Weedmaps"}
+    params = {"limit": 100}
     headers = {'Accept': 'application/json', 'apikey': cannabis_news_api_key}
     
     try:
@@ -43,31 +43,51 @@ def fetch_news_articles():
             # Parse the JSON response
             json_response = response.json()
 
-            # Extract the first article from the articles list
-            article = json_response['articles'][0]
+            # Extract the articles from the JSON response
+            articles = json_response['articles']
 
-            # Create a dictionary with the data you want to use
-            article_data = {
-                "title": article['title'],
-                "url": article['url'],
-                "description": article['description'],
-                "author": article['author'],
-                "publishedAt": article['publishedAt'],
-                "content": article['content'],
-                "image_url": article['urlToImage'],
-                "topic": article['Topic'],
-                "sentiment": article['sentiment'],
-                "summarization": article['summarization'],
-                "GPE": article['GPE'],
-                "ORG": article['ORG'],
-                "PERSON": article['PERSON'],
-            }
+            # Define a list of cannabis-related keywords
+            cannabis_keywords = ["cannabis", "weed", "marijuana", "CBD", "THC", "hemp"]
 
-            print("Fetched Articles:")
-            print(article_data)
-            
-            # Return the article_data dictionary
-            return article_data
+            # Filter articles based on the presence of cannabis-related keywords in the title, description, or content
+            cannabis_articles = [
+                article for article in articles
+                if any(
+                    keyword.lower() in (article.get(field) or '').lower()
+                    for keyword in cannabis_keywords
+                    for field in ['title', 'description', 'content']
+                )
+            ]
+
+            # Randomly select an article from the list of cannabis_articles
+            if cannabis_articles:
+                article = random.choice(cannabis_articles)
+                
+                # Create a dictionary with the data you want to use
+                article_data = {
+                    "title": article['title'],
+                    "url": article['url'],
+                    "description": article['description'],
+                    "author": article['author'],
+                    "publishedAt": article['publishedAt'],
+                    "content": article['content'],
+                    "image_url": article['urlToImage'],
+                    "topic": article['Topic'],
+                    "sentiment": article['sentiment'],
+                    "summarization": article['summarization'],
+                    "GPE": article['GPE'],
+                    "ORG": article['ORG'],
+                    "PERSON": article['PERSON'],
+                }
+
+                print("Fetched Articles:")
+                print(article_data)
+                
+                # Return the article_data dictionary
+                return article_data
+            else:
+                print("No cannabis-related articles found in the latest batch.")
+                return None
         else:
             print("Failed to retrieve articles. Status Code:", response.status_code)
             return None
@@ -76,9 +96,6 @@ def fetch_news_articles():
         return None
 
 # Function to generate tweets using OpenAI
-import openai
-import re
-
 def generate_tweet(article_data):
     topic_hashtag_map = {
         "Business": "#Business",
@@ -93,7 +110,7 @@ def generate_tweet(article_data):
     prompt = (f"You're a digital cannabis news reporter and your task is to create an engaging tweet about a recent article. "
               f"Start with a hook or the article's title to grab attention. Provide a snippet or your take on the news. "
               f"Encourage people to read the full story using the URL. And remember to let them know the sentiment and topic of the article.\n\n"
-              f"Title: {article_data['title']}\nURL: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}\n"
+              f"Title: {article_data['title']}\nURL: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}\ncontent: {article_data['content']}"
               f"\nGenerate a tweet that is friendly and encourages readers to learn more from the article's URL.")
 
     max_tweet_length = 280  # Maximum length of a tweet in characters
