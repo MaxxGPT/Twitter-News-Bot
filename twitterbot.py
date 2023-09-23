@@ -1,13 +1,10 @@
 import os
-from urllib import response
 import openai
 import tweepy
 import random
-from requests.auth import HTTPBasicAuth
 import requests
-from dotenv import load_dotenv
-import openai
 import re
+from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
@@ -29,73 +26,64 @@ twitter_bearer_token = os.getenv("TWITTER_BEARER_TOKEN")
 # Initialize Twitter API client
 twitter_api = tweepy.Client(twitter_bearer_token, twitter_consumer_key, twitter_consumer_secret, twitter_access_token, twitter_access_token_secret, wait_on_rate_limit=False)
 
-# Function to fetch a news article from your database
-def fetch_news_articles():
+def fetch_news_articles(max_retries=5):
     params = {"limit": 100}
     headers = {'Accept': 'application/json', 'apikey': cannabis_news_api_key}
-    
-    try:
-        response = requests.get(cannabis_news_endpoint, params=params, headers=headers)
-        response.raise_for_status()  # Raise an exception for HTTP error
+    retries = 0  # Initialize retry counter
 
-        # Check if the response status code is 200 (OK)
-        if response.status_code == 200:
-            # Parse the JSON response
-            json_response = response.json()
+    while retries < max_retries:
+        try:
+            response = requests.get(cannabis_news_endpoint, params=params, headers=headers)
+            response.raise_for_status()  # Raise an exception for HTTP error
 
-            # Extract the articles from the JSON response
-            articles = json_response['articles']
+            if response.status_code == 200:
+                json_response = response.json()
+                articles = json_response['articles']
 
-            # Define a list of cannabis-related keywords
-            cannabis_keywords = ["cannabis", "weed", "marijuana", "CBD", "THC", "hemp"]
+                cannabis_keywords = ["cannabis", "marijuana", "weed", "THC", "CBD", "hemp", "pot", "stoned", "stoner", "420", "4/20", "4:20", "bong", "high", "drug", "drugs"]
 
-            # Filter articles based on the presence of cannabis-related keywords in the title, description, or content
-            cannabis_articles = [
-                article for article in articles
-                if any(
-                    keyword.lower() in (article.get(field) or '').lower()
-                    for keyword in cannabis_keywords
-                    for field in ['title', 'description', 'content']
-                )
-            ]
+                cannabis_articles = [
+                    article for article in articles
+                    if any(
+                        keyword.lower() in (article.get(field) or '').lower()
+                        for keyword in cannabis_keywords
+                        for field in ['title', 'description']
+                    )
+                ]
 
-            # Randomly select an article from the list of cannabis_articles
-            if cannabis_articles:
-                article = random.choice(cannabis_articles)
-                
-                # Create a dictionary with the data you want to use
-                article_data = {
-                    "title": article['title'],
-                    "url": article['url'],
-                    "description": article['description'],
-                    "author": article['author'],
-                    "publishedAt": article['publishedAt'],
-                    "content": article['content'],
-                    "image_url": article['urlToImage'],
-                    "topic": article['Topic'],
-                    "sentiment": article['sentiment'],
-                    "summarization": article['summarization'],
-                    "GPE": article['GPE'],
-                    "ORG": article['ORG'],
-                    "PERSON": article['PERSON'],
-                }
+                if cannabis_articles:
+                    article = random.choice(cannabis_articles)
+                    article_data = {
+                        "title": article['title'],
+                        "url": article['url'],
+                        "description": article['description'],
+                        "author": article['author'],
+                        "publishedAt": article['publishedAt'],
+                        "content": article['content'],
+                        "image_url": article['urlToImage'],
+                        "topic": article['Topic'],
+                        "sentiment": article['sentiment'],
+                        "summarization": article['summarization'],
+                        "GPE": article['GPE'],
+                        "ORG": article['ORG'],
+                        "PERSON": article['PERSON'],
+                    }
+                    return article_data
 
-                print("Fetched Articles:")
-                print(article_data)
-                
-                # Return the article_data dictionary
-                return article_data
             else:
-                print("No cannabis-related articles found in the latest batch.")
+                print("Failed to retrieve articles. Status Code:", response.status_code)
                 return None
-        else:
-            print("Failed to retrieve articles. Status Code:", response.status_code)
-            return None
-    except requests.exceptions.RequestException as e:
-        print("Error fetching news articles:", e)
-        return None
 
-# Function to generate tweets using OpenAI
+        except requests.exceptions.RequestException as e:
+            print("Error fetching news articles:", e)
+            return None
+
+        retries += 1
+        print(f"No cannabis-related articles found in batch {retries}. Retrying...")
+
+    print(f"Exhausted maximum retries ({max_retries}) without finding a cannabis-related article.")
+    return None
+
 def generate_tweet(article_data):
     topic_hashtag_map = {
         "Business": "#Business",
@@ -103,76 +91,49 @@ def generate_tweet(article_data):
         "Politics": "#Politics",
         "Consumer": "#Consumer"
     }
-
-    # Get the hashtag based on the topic
     topic_hashtag = topic_hashtag_map.get(article_data['topic'], "")
-    
-    prompt = (f"You're a digital cannabis news reporter and your task is to create an engaging tweet about a recent article. "
-              f"Start with a hook or the article's title to grab attention. Provide a snippet or your take on the news. "
-              f"Encourage people to read the full story using the URL. And remember to let them know the sentiment and topic of the article.\n\n"
-              f"Title: {article_data['title']}\nURL: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}\ncontent: {article_data['content']}"
-              f"\nGenerate a tweet that is friendly and encourages readers to learn more from the article's URL.")
+    system_message = "You're a digital cannabis news reporter and your task is to create an engaging tweet about a recent article."
+    user_message = (f"Start with a hook or the article's title to grab attention. Provide a snippet or your take on the news. "
+                    f"Encourage people to read the full story using the URL. And remember to let them know the sentiment and topic of the article.\n"
+                    f"Title: {article_data['title']}\nURL: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}")
 
-    max_tweet_length = 280  # Maximum length of a tweet in characters
+    messages = [
+        {"role": "system", "content": system_message},
+        {"role": "user", "content": user_message}
+    ]
 
-    # Loop until a tweet within the character limit is generated
+    max_tweet_length = 280
     while True:
-        response = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=prompt,
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=messages,
             temperature=0.7,
-            max_tokens=90  # Limit the tweet to a reasonable number of tokens to avoid very long outputs
+            max_tokens=90
         )
-        generated_tweet = response.choices[0].text.strip()
-
-        # Remove any hashtags that were generated
+        generated_tweet = response.choices[0].message['content'].strip()
         generated_tweet = re.sub(r"#\w+", "", generated_tweet)
-
-        # Add the sentiment and topic lines at the end of the tweet, on their own lines
         generated_tweet += f"\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}"
-        
-        # Adding the topic hashtag within the tweet body
         generated_tweet = generated_tweet.replace(article_data['topic'], topic_hashtag)
-
-        # Add general hashtags at the end of the tweet, on their own lines
         generated_tweet += "\n#Cannabis #Weed"
 
-        # Check if the generated tweet is within the allowed character limit
         if len(generated_tweet) <= max_tweet_length:
             return generated_tweet
 
 
-
-
-# Function to post a tweet to Twitter
 def post_tweet(tweet_content):
     try:
-        # Print the length of the tweet content
-        print("Tweet Content Length:", len(tweet_content))
-        
-        # Post the tweet using Tweepy
         response = twitter_api.create_tweet(text=tweet_content)
         print("Tweet posted successfully:", tweet_content)
     except tweepy.errors.TweepyException as e:
         print("Error posting tweet:", e)
 
-
-# Main function
 def main():
-    # Fetch a news article from your database
     article_data = fetch_news_articles()
-
     if article_data:
-        # Generate a tweet based on the news article
         tweet = generate_tweet(article_data)
-
-        # Print the generated tweet
         print("Generated Tweet:")
         print(tweet)
-
-        # Post the generated tweet to Twitter
         post_tweet(tweet)
-
 
 if __name__ == "__main__":
     main()
