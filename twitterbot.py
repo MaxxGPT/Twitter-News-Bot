@@ -82,7 +82,7 @@ def generate_tweet(article_data):
     }
     topic_hashtag = topic_hashtag_map.get(article_data['topic'], "")
     system_message = "You're a digital cannabis news reporter and your task is to create an engaging tweet about a recent article."
-    user_message = f"Start with a hook or the article's title to grab attention. Provide a snippet or your take on the news. Encourage people to read the full story using the URL. And remember to let them know the sentiment and topic of the article.\nTitle: {article_data['title']}\nURL: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}"
+    user_message = f"Start with a hook or the article's title to grab attention. Provide a snippet or your take on the news. Encourage people to read the full story. Do not shorten the url, and remember to let them know the sentiment and topic of the article.\nTitle: {article_data['title']}\nURL: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}"
     messages = [
         {"role": "system", "content": system_message},
         {"role": "user", "content": user_message}
@@ -100,7 +100,7 @@ def generate_tweet(article_data):
             generated_tweet = re.sub(r"#\w+", "", generated_tweet)
             generated_tweet += f"\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}"
             generated_tweet = generated_tweet.replace(article_data['topic'], topic_hashtag)
-            generated_tweet += "\n#Cannabis #Weed"
+            generated_tweet += "\n#Cannabis #Weed #marijuana"
             if len(generated_tweet) <= max_tweet_length:
                 return generated_tweet
         except openai.RateLimitError as e:
