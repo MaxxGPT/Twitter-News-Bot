@@ -1,29 +1,22 @@
-# README #
+# Twitter Bot for Cannabis News #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+### Overview ###
 
-### What is this repository for? ###
+This Twitter bot is designed to automatically post tweets related to cannabis news. It fetches news articles from a cannabis news API, generates a tweet using OpenAI's GPT-4 model, and then posts it to Twitter.
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+### Version ###
 
-### How do I get set up? ###
+1.0.0
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+### Features ###
 
-### Contribution guidelines ###
+* Fetches cannabis-related news articles.
+* Generates tweets based on the fetched news articles.
+* Automatically posts tweets to Twitter.
 
-* Writing tests
-* Code review
-* Other guidelines
+### Prerequisites ###
 
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact
+* Python 3.x
+* pip
+* Twitter Developer Account
+* OpenAI API key
