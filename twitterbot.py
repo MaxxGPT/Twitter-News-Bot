@@ -7,6 +7,7 @@ import re
 from dotenv import load_dotenv
 from time import sleep
 from datetime import datetime
+from nltk.tokenize import sent_tokenize
 
 
 # Load environment variables from .env file
@@ -24,6 +25,10 @@ twitter_bearer_token = os.getenv("TWITTER_BEARER_TOKEN")
 
 # Initialize Twitter API client
 twitter_api = tweepy.Client(twitter_bearer_token, twitter_consumer_key, twitter_consumer_secret, twitter_access_token, twitter_access_token_secret, wait_on_rate_limit=True)
+
+def calculate_tweet_length(tweet):
+    url_count = tweet.count('http')
+    return len(tweet) + (url_count * (23 - 6))  # Twitter counts URLs as 23 characters
 
 # Function to fetch cannabis-related news articles
 def fetch_news_articles(max_retries=5, specific_source_id='new-cannabis-ventures'):
@@ -77,18 +82,19 @@ def fetch_news_articles(max_retries=5, specific_source_id='new-cannabis-ventures
 def generate_tweet(article_data):
     print(f"{datetime.now()} - Starting to generate tweet...")
     
-    twitter_url_length = 23  # Twitter's t.co shortened URL length, adjust this based on actual length
-    url_placeholder = "t.co/" + "x" * (twitter_url_length - 5)  # Create a placeholder of the same length
+    # Fixed components
+    constant_labels_length = len("Url: Sentiment: Topic: ")
+    constant_hashtags_length = len("#Cannabis #Marijuana")
+    fixed_components_length = constant_labels_length + constant_hashtags_length
+    max_tweet_length = 280
+    
+    # Dynamic components for each tweet
+    dynamic_components = f"{article_data['url']} {article_data['sentiment']} {article_data['topic']}"
+    dynamic_components_length = len(dynamic_components)
 
-    retries = 0
-    topic_hashtag_map = {
-        "Business": "#Business",
-        "Crime": "#Crime",
-        "Politics": "#Politics",
-        "Consumer": "#Consumer"
-    }
-    topic_hashtag = topic_hashtag_map.get(article_data['topic'], "")
-    url_placeholder = "bit.ly/..."
+    # Calculate maximum length for generatable content
+    max_generatable_length = max_tweet_length - (fixed_components_length + dynamic_components_length)
+    content_max_tokens = max_generatable_length // 4  # Adjust as needed
     
     system_message = "You're a digital cannabis news reporter and your task is to create an engaging tweet about a recent article."
     user_message = f"Start with a hook or the article's title to grab attention. Provide a snippet or your take on the news.\nTitle: {article_data['title']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}"
@@ -96,43 +102,53 @@ def generate_tweet(article_data):
         {"role": "system", "content": system_message},
         {"role": "user", "content": user_message}
     ]
-    max_tweet_length = 280
     
-    while True:
-        try:
-            print(f"{datetime.now()} - About to call OpenAI API...")
-            response = openai.ChatCompletion.create(
-                model="gpt-4",
-                messages=messages,
-                temperature=0.7,
-                max_tokens=60
-            )
-            print(f"{datetime.now()} - OpenAI API call completed.")
+    # OpenAI API call
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=messages,
+        temperature=0.5,
+        max_tokens=content_max_tokens
+    )
+
+    # Post-process generated tweet
+    generated_tweet = response.choices[0].message['content'].strip()
+
+    # Assemble the full tweet with URL, sentiment, etc.
+    full_tweet = f"{generated_tweet}\nUrl: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}\n#Cannabis #marijuana"
+
+    # Check if the tweet is too long
+    if len(full_tweet) > max_tweet_length:
+        # Tokenize into sentences
+        sentences = sent_tokenize(generated_tweet)
+        
+        # Attempt to keep essential information (e.g., first sentence)
+        essential_info = sentences[0]
+        
+        # Start removing extra sentences from the end
+        while len(full_tweet) > max_tweet_length and len(sentences) > 1:
+            del sentences[-1]
+            truncated_tweet = ' '.join(sentences)
             
-            generated_tweet = response.choices[0].message['content'].strip()
-            generated_tweet = re.sub(r"#\w+", "", generated_tweet)
-            generated_tweet += f"\nUrl: {url_placeholder}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}"
-            generated_tweet = generated_tweet.replace(article_data['topic'], topic_hashtag)
-            generated_tweet += "\n#Cannabis #marijuana"
+            # Reassemble the tweet
+            full_tweet = f"{truncated_tweet}\nUrl: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}\n#Cannabis #marijuana"
 
-            print(f"Generated tweet length: {len(generated_tweet)}")
-            print(f"Generated tweet content: {generated_tweet}")
+        # If still too long, try to shorten words or use abbreviations
+        if len(full_tweet) > max_tweet_length:
+            # Implement your logic to shorten words or use abbreviations
+            # For example: Replace 'million' with 'M', 'business' with 'biz', etc.
+            pass  # Replace this with your actual implementation
 
-            if len(generated_tweet) <= max_tweet_length:
-                # Replace the placeholder with the actual URL before returning
-                generated_tweet = generated_tweet.replace(url_placeholder, article_data['url'])
-                print(f"{datetime.now()} - Finished generating tweet.")
-                return generated_tweet
-            else:
-                print(f"{datetime.now()} - Generated tweet is too long. Retrying...")
+    print(f"Generated tweet length: {len(full_tweet)}")
+    print(f"Generated tweet content: {full_tweet}")
 
-        except openai.RateLimitError as e:
-            print(f"{datetime.now()} - Rate limit reached for OpenAI API. Waiting...")
-            retries += 1
-            sleep(2 ** retries)
-        except openai.Error as e:
-            print(f"{datetime.now()} - An OpenAI API error occurred: {e}")
-            return None
+    if len(full_tweet) <= max_tweet_length:
+        print(f"{datetime.now()} - Finished generating tweet.")
+        return full_tweet
+    else:
+        print(f"{datetime.now()} - Generated tweet is still too long after truncation. Retrying...")
+        return None
+
 
 
 
