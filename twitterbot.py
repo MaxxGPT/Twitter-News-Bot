@@ -31,8 +31,74 @@ def calculate_tweet_length(tweet):
     return len(tweet) + (url_count * (23 - 6))  # Twitter counts URLs as 23 characters
 
 # Function to fetch cannabis-related news articles
-def fetch_news_articles(max_retries=5, specific_source_id='new-cannabis-ventures'):
+def fetch_news_articles(max_retries=5, max_total_attempts=50):
     print(f"{datetime.now()} - Starting to fetch articles...")
+
+    # Your list of source_ids
+    source_ids = [
+        "420-intel", "canna-law-blog", "cannabis-business-times", "green-entrepreneurs", 
+        "new-cannabis-ventures", "pot-network", "the-fresh-toast", "420-magazine", 
+        "cannabis-culture", "cannverse-solutions", "hail-mary-jane", "hemp-industry-daily", 
+        "leafly", "marijuana-moment", "marley-natural", "merry-jane", "the-growth-op", 
+        "california-weed-blog", "cannabis-watch", "leafbuyer", "marijuana-business-daily", 
+        "the-cannabist", "cannabis-law-report", "cannabis-life-network", "high-times", 
+        "marijuana", "marijuana-politics", "mg-retailer", "the-joint-blog", "weedmaps", "leafwell"
+    ]
+
+    # Randomly select a source
+    specific_source_id = random.choice(source_ids)
+
+    total_attempts = 0  # Initialize total_attempts counter
+    
+    while total_attempts < max_total_attempts:
+        specific_source_id = random.choice(source_ids)  # Randomly select a source
+        params = {"limit": 1, "source_id": specific_source_id}
+        headers = {'Accept': 'application/json', 'apikey': cannabis_news_api_key}
+        
+        retries = 0  # Reset retries counter for each source
+        
+        while retries < max_retries:
+            total_attempts += 1  # Increment total_attempts counter
+            
+            try:
+                response = requests.get(cannabis_news_endpoint, params=params, headers=headers)
+                response.raise_for_status()
+                
+                if response.status_code == 200:
+                    json_response = response.json()
+                    articles = json_response['articles']
+
+                    if articles:
+                        article = articles[0]
+                        article_data = {
+                            "title": article['title'],
+                            "url": article['url'],
+                            "topic": article['Topic'],
+                            "sentiment": article['sentiment'],
+                        }
+                        print(f"{datetime.now()} - Finished fetching articles.")
+                        return article_data
+
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 429:
+                    print(f"{datetime.now()} - Rate limit reached for Cannabis News API. Waiting...")
+                    sleep(60)
+                else:
+                    print(f"{datetime.now()} - An HTTP error occurred: {e}")
+            except requests.exceptions.RequestException as e:
+                print(f"{datetime.now()} - Error fetching news articles: {e}")
+
+            retries += 1
+            print(f"{datetime.now()} - No articles found in batch {retries}. Retrying...")
+            
+        print(f"{datetime.now()} - Exhausted maximum retries ({max_retries}) for source {specific_source_id}. Moving to next source...")
+        
+    print(f"{datetime.now()} - Exhausted maximum total attempts ({max_total_attempts}) without finding an article.")
+    return None
+
+    params = {"limit": 1, "source_id": specific_source_id}
+    headers = {'Accept': 'application/json', 'apikey': cannabis_news_api_key}
+    retries = 0
     
     params = {"limit": 1, "source_id": specific_source_id}  # Limit set to 1, as you want the first article only
     headers = {'Accept': 'application/json', 'apikey': cannabis_news_api_key}
