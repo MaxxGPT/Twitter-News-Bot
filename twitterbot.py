@@ -6,6 +6,8 @@ import requests
 import re
 from dotenv import load_dotenv
 from time import sleep
+from datetime import datetime
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -24,10 +26,13 @@ twitter_bearer_token = os.getenv("TWITTER_BEARER_TOKEN")
 twitter_api = tweepy.Client(twitter_bearer_token, twitter_consumer_key, twitter_consumer_secret, twitter_access_token, twitter_access_token_secret, wait_on_rate_limit=True)
 
 # Function to fetch cannabis-related news articles
-def fetch_news_articles(max_retries=5):
-    params = {"limit": 100}
+def fetch_news_articles(max_retries=5, specific_source_id='new-cannabis-ventures'):
+    print(f"{datetime.now()} - Starting to fetch articles...")
+    
+    params = {"limit": 1, "source_id": specific_source_id}  # Limit set to 1, as you want the first article only
     headers = {'Accept': 'application/json', 'apikey': cannabis_news_api_key}
     retries = 0  # Initialize retry counter
+
     while retries < max_retries:
         try:
             response = requests.get(cannabis_news_endpoint, params=params, headers=headers)
@@ -35,46 +40,46 @@ def fetch_news_articles(max_retries=5):
             if response.status_code == 200:
                 json_response = response.json()
                 articles = json_response['articles']
-                cannabis_keywords = ["cannabis", "marijuana", "weed", "THC", "CBD", "hemp", "pot", "stoned", "stoner", "420", "4/20", "4:20", "bong", "high", "drug", "drugs"]
-                cannabis_articles = [article for article in articles if any(keyword.lower() in (article.get(field) or '').lower() for keyword in cannabis_keywords for field in ['title', 'description'])]
-                if cannabis_articles:
-                    article = random.choice(cannabis_articles)
+
+                if articles:
+                    article = articles[0]  # Taking the first article as you mentioned
                     article_data = {
                         "title": article['title'],
                         "url": article['url'],
-                        "description": article['description'],
-                        "author": article['author'],
-                        "publishedAt": article['publishedAt'],
-                        "content": article['content'],
-                        "image_url": article['urlToImage'],
                         "topic": article['Topic'],
                         "sentiment": article['sentiment'],
-                        "summarization": article['summarization'],
-                        "GPE": article['GPE'],
-                        "ORG": article['ORG'],
-                        "PERSON": article['PERSON'],
                     }
+                    print(f"{datetime.now()} - Finished fetching articles.")
                     return article_data
             else:
-                print("Failed to retrieve articles. Status Code:", response.status_code)
+                print(f"{datetime.now()} - Failed to retrieve articles. Status Code: {response.status_code}")
                 return None
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 429:
-                print("Rate limit reached for Cannabis News API. Waiting...")
+                print(f"{datetime.now()} - Rate limit reached for Cannabis News API. Waiting...")
                 sleep(60)
             else:
-                print(f"An HTTP error occurred: {e}")
+                print(f"{datetime.now()} - An HTTP error occurred: {e}")
                 return None
         except requests.exceptions.RequestException as e:
-            print(f"Error fetching news articles: {e}")
+            print(f"{datetime.now()} - Error fetching news articles: {e}")
             return None
+
         retries += 1
-        print(f"No cannabis-related articles found in batch {retries}. Retrying...")
-    print(f"Exhausted maximum retries ({max_retries}) without finding a cannabis-related article.")
+        print(f"{datetime.now()} - No articles found in batch {retries}. Retrying...")
+        
+    print(f"{datetime.now()} - Exhausted maximum retries ({max_retries}) without finding an article.")
     return None
 
+
 # Function to generate a tweet based on an article
+
 def generate_tweet(article_data):
+    print(f"{datetime.now()} - Starting to generate tweet...")
+    
+    twitter_url_length = 23  # Twitter's t.co shortened URL length, adjust this based on actual length
+    url_placeholder = "t.co/" + "x" * (twitter_url_length - 5)  # Create a placeholder of the same length
+
     retries = 0
     topic_hashtag_map = {
         "Business": "#Business",
@@ -83,47 +88,63 @@ def generate_tweet(article_data):
         "Consumer": "#Consumer"
     }
     topic_hashtag = topic_hashtag_map.get(article_data['topic'], "")
+    url_placeholder = "bit.ly/..."
+    
     system_message = "You're a digital cannabis news reporter and your task is to create an engaging tweet about a recent article."
-    user_message = f"Start with a hook or the article's title to grab attention. Provide a snippet or your take on the news. Encourage people to read the full story. Do not shorten the url, and remember to let them know the sentiment and topic of the article.\nTitle: {article_data['title']}\nURL: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}"
+    user_message = f"Start with a hook or the article's title to grab attention. Provide a snippet or your take on the news.\nTitle: {article_data['title']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}"
     messages = [
         {"role": "system", "content": system_message},
         {"role": "user", "content": user_message}
     ]
     max_tweet_length = 280
+    
     while True:
         try:
+            print(f"{datetime.now()} - About to call OpenAI API...")
             response = openai.ChatCompletion.create(
                 model="gpt-4",
                 messages=messages,
                 temperature=0.7,
-                max_tokens=90
+                max_tokens=60
             )
+            print(f"{datetime.now()} - OpenAI API call completed.")
+            
             generated_tweet = response.choices[0].message['content'].strip()
             generated_tweet = re.sub(r"#\w+", "", generated_tweet)
-            generated_tweet += f"\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}"
+            generated_tweet += f"\nUrl: {url_placeholder}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}"
             generated_tweet = generated_tweet.replace(article_data['topic'], topic_hashtag)
-            generated_tweet += "\n#Cannabis #Weed #marijuana"
+            generated_tweet += "\n#Cannabis #marijuana"
+
+            print(f"Generated tweet length: {len(generated_tweet)}")
+            print(f"Generated tweet content: {generated_tweet}")
+
             if len(generated_tweet) <= max_tweet_length:
+                # Replace the placeholder with the actual URL before returning
+                generated_tweet = generated_tweet.replace(url_placeholder, article_data['url'])
+                print(f"{datetime.now()} - Finished generating tweet.")
                 return generated_tweet
+            else:
+                print(f"{datetime.now()} - Generated tweet is too long. Retrying...")
+
         except openai.RateLimitError as e:
-            print("Rate limit reached for OpenAI API. Waiting...")
+            print(f"{datetime.now()} - Rate limit reached for OpenAI API. Waiting...")
             retries += 1
             sleep(2 ** retries)
         except openai.Error as e:
-            print(f"An OpenAI API error occurred: {e}")
+            print(f"{datetime.now()} - An OpenAI API error occurred: {e}")
             return None
+
+
 
 # Function to post the generated tweet
 def post_tweet(tweet_content):
     try:
         response = twitter_api.create_tweet(text=tweet_content)
         print("Tweet posted successfully:", tweet_content)
-    except tweepy.TweepError as e:
-        if 'code' in e.reason and e.reason['code'] == 88: 
-            print("Rate limit reached for Twitter API. Waiting...")
-            sleep(15 * 60)  # Wait for 15 minutes
-        else:
-            print(f"An error occurred with the Twitter API: {e}")
+    except Exception as e:  # Catch all exceptions
+        print(f"An unexpected error occurred: {e}")
+        print(f"Exception type: {type(e)}")
+
 
 # Main function to control the flow of the script
 def main():
