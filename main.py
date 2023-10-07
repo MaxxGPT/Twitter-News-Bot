@@ -1,8 +1,13 @@
+import logging
 from twitter_news_bot.config import load_config, initialize_twitter_api  # Import initialize_twitter_api
 from twitter_news_bot.data_fetcher import fetch_news_articles
 from twitter_news_bot.openai_api import generate_tweet
 from twitter_news_bot.twitter_api import post_tweet  # Make sure this import works
-from twitter_news_bot.utils import log_message
+from twitter_news_bot.logger import setup_logger
+
+# Initialize the logger
+setup_logger()
+logger = logging.getLogger(__name__)
 
 def main():
     try:
@@ -21,25 +26,25 @@ def main():
         )
         
         if not article_data:
-            log_message("No article data received.")
+            logger.warning("No article data received.")
             return
         else:
-            log_message(f"Successfully retrieved article data: {article_data}")
+            logger.info(f"Successfully retrieved article data: {article_data}")
 
         # Generate a tweet based on the article
         tweet = generate_tweet(article_data, config['OPENAI_API_KEY'])
         
         if not tweet:
-            log_message("Tweet generation failed.")
+            logger.warning("Tweet generation failed.")
             return
         else:
-            log_message(f"Successfully generated tweet: {tweet}")
+            logger.info(f"Successfully generated tweet: {tweet}")
 
         # Post the tweet
         post_tweet(tweet, twitter_api)  # Pass the initialized Twitter API here
 
     except Exception as e:
-        log_message(f"An unexpected error occurred: {e}")
+        logger.error(f"An unexpected error occurred: {e}", exc_info=True)  # exc_info=True will log the traceback
 
 if __name__ == "__main__":
     main()

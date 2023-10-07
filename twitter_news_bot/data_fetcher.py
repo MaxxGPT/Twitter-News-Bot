@@ -1,6 +1,11 @@
 import requests
 import random
 from datetime import datetime
+import logging
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 def fetch_single_article(source_id, api_key, endpoint):
     params = {"limit": 1, "source_id": source_id}
@@ -22,11 +27,11 @@ def fetch_single_article(source_id, api_key, endpoint):
                     "sentiment": article['sentiment'],
                 }
     except requests.exceptions.RequestException as e:
-        print(f"{datetime.now()} - Error fetching news articles: {e}")
+        logger.error(f"Error fetching news articles: {e}")
     return None
 
 def fetch_news_articles(api_key, endpoint, max_retries=5, max_total_attempts=50):
-    print(f"{datetime.now()} - Starting to fetch articles...")
+    logger.info("Starting to fetch articles...")
 
     # Your list of source_ids
     source_ids = [
@@ -50,13 +55,13 @@ def fetch_news_articles(api_key, endpoint, max_retries=5, max_total_attempts=50)
             
             article_data = fetch_single_article(specific_source_id, api_key, endpoint)
             if article_data:
-                print(f"{datetime.now()} - Finished fetching articles.")
+                logger.info("Finished fetching articles.")
                 return article_data
 
             retries += 1
-            print(f"{datetime.now()} - No articles found in batch {retries}. Retrying...")
+            logger.warning(f"No articles found in batch {retries}. Retrying...")
             
-        print(f"{datetime.now()} - Exhausted maximum retries ({max_retries}) for source {specific_source_id}. Moving to next source...")
+        logger.warning(f"Exhausted maximum retries ({max_retries}) for source {specific_source_id}. Moving to next source...")
         
-    print(f"{datetime.now()} - Exhausted maximum total attempts ({max_total_attempts}) without finding an article.")
+    logger.error(f"Exhausted maximum total attempts ({max_total_attempts}) without finding an article.")
     return None

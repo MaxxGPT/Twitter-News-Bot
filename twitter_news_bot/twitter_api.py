@@ -1,4 +1,7 @@
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Function to calculate the length of a tweet considering Twitter's specific rules
 def calculate_tweet_length(tweet):
@@ -9,9 +12,7 @@ def calculate_tweet_length(tweet):
 def post_tweet(tweet_content, twitter_api):
     try:
         response = twitter_api.create_tweet(text=tweet_content)
-        print(f"{datetime.now()} - Tweet posted successfully: {tweet_content}")
+        logger.info(f"{datetime.now()} - Tweet posted successfully: {tweet_content}")
     except Exception as e:
-        print(f"{datetime.now()} - An unexpected error occurred: {e}")
-        print(f"Exception type: {type(e)}")
-
-
+        logger.error(f"{datetime.now()} - An unexpected error occurred: {e}")
+        logger.error(f"Exception type: {type(e)}")

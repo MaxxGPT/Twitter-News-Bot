@@ -49,5 +49,6 @@ Thumbs.db
 *.wmv
 
 .env
+application_error.log
 
 
