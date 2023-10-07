@@ -52,6 +52,4 @@ Thumbs.db
 application_error.log
 venv/
 logs/
-
-
 .vscode/
