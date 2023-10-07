@@ -10,14 +10,12 @@ def initialize_twitter_api():
     twitter_consumer_secret = os.getenv("TWITTER_CONSUMER_SECRET")
     twitter_access_token = os.getenv("TWITTER_ACCESS_TOKEN")
     twitter_access_token_secret = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
+    twitter_bearer_token = os.getenv("TWITTER_BEARER_TOKEN")
 
-    if not all([twitter_consumer_key, twitter_consumer_secret, twitter_access_token, twitter_access_token_secret]):
+    if not all([twitter_consumer_key, twitter_consumer_secret, twitter_access_token, twitter_access_token_secret, twitter_bearer_token]):
         raise Exception("Twitter environment variables are not set correctly.")
 
-    auth = tweepy.OAuthHandler(twitter_consumer_key, twitter_consumer_secret)
-    auth.set_access_token(twitter_access_token, twitter_access_token_secret)
-
-    return tweepy.API(auth, wait_on_rate_limit=True)
+    return tweepy.Client(twitter_bearer_token, twitter_consumer_key, twitter_consumer_secret, twitter_access_token, twitter_access_token_secret, wait_on_rate_limit=True)
 
 def load_config():
     return {
