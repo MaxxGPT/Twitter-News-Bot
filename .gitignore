@@ -50,5 +50,7 @@ Thumbs.db
 
 .env
 application_error.log
+venv/
+logs/
 
 
