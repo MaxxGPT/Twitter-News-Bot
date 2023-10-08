@@ -6,6 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 def generate_tweet(article_data, openai_api_key, max_tweet_length=280):
+    logger.debug(f"Received article data: {article_data}")
     try:
         logger.info(f"{datetime.now()} - Starting to generate tweet...")
 
@@ -30,11 +31,14 @@ def generate_tweet(article_data, openai_api_key, max_tweet_length=280):
             max_tokens=content_max_tokens
         )
 
+        # Log the raw response from OpenAI
+        logger.debug(f"OpenAI raw response: {response.choices[0].message}")
+
         # Post-process generated tweet
         generated_tweet = response.choices[0].message['content'].strip()
 
         # Assemble the full tweet
-        full_tweet = f"{generated_tweet}\nUrl: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}\n#Cannabis #Marijuana"
+        full_tweet = f"{generated_tweet}\nurl: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}\n#Cannabis #Marijuana"
 
         # Handle tweet length
         while len(full_tweet) > max_tweet_length:
@@ -44,7 +48,7 @@ def generate_tweet(article_data, openai_api_key, max_tweet_length=280):
             generated_tweet = ' '.join(sentences)
 
             # Reassemble the tweet
-            full_tweet = f"{generated_tweet}\nUrl: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}\n#Cannabis #Marijuana"
+            full_tweet = f"{generated_tweet}\nurl: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}\n#Cannabis #Marijuana"
 
         logger.info(f"Generated tweet length: {len(full_tweet)}")
         logger.info(f"Generated tweet content: {full_tweet}")

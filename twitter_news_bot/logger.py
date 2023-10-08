@@ -14,7 +14,7 @@ def setup_logger(log_file='application_errors.log', log_level=logging.INFO):
 
     # Create console handler with a higher log level
     ch = logging.StreamHandler()
-    ch.setLevel(log_level)
+    ch.setLevel(logging.WARNING)
 
     # Create formatter
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')

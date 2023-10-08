@@ -4,11 +4,10 @@ from datetime import datetime
 import logging
 
 # Initialize logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 def fetch_single_article(source_id, api_key, endpoint):
-    params = {"limit": 1, "source_id": source_id}
+    params = {"limit": 1, "source_id": source_id, "tweeted": False}
     headers = {'Accept': 'application/json', 'apikey': api_key}
 
     try:
