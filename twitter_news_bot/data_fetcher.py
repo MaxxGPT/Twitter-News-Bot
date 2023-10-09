@@ -6,6 +6,26 @@ import logging
 # Initialize logging
 logger = logging.getLogger(__name__)
 
+def mark_as_tweeted(article_id, api_key, update_endpoint):
+    """
+    Mark a specific article as tweeted in the database.
+    """
+    headers = {'Accept': 'application/json', 'apikey': api_key}
+    
+    data = {"tweeted": True}
+    
+    try:
+        response = requests.patch(f"{update_endpoint}/{article_id}", headers=headers, json=data)
+        response.raise_for_status()
+
+        if response.status_code == 200:
+            logger.info(f"Successfully marked article with ID {article_id} as tweeted.")
+        else:
+            logger.warning(f"Failed to mark article with ID {article_id} as tweeted. Response code: {response.status_code}")
+    
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error updating 'tweeted' status for article with ID {article_id}: {e}")
+
 def fetch_single_article(source_id, api_key, endpoint):
     params = {"limit": 1, "source_id": source_id, "tweeted": False}
     headers = {'Accept': 'application/json', 'apikey': api_key}
@@ -20,6 +40,7 @@ def fetch_single_article(source_id, api_key, endpoint):
             if articles:
                 article = articles[0]
                 return {
+                    "_id": article['_id'],
                     "title": article['title'],
                     "url": article['url'],
                     "topic": article['Topic'],
@@ -64,3 +85,5 @@ def fetch_news_articles(api_key, endpoint, max_retries=5, max_total_attempts=50)
         
     logger.error(f"Exhausted maximum total attempts ({max_total_attempts}) without finding an article.")
     return None
+
+    
