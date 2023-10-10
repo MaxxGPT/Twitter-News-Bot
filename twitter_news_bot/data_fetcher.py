@@ -13,10 +13,12 @@ def mark_as_tweeted(article_id, api_key, update_endpoint):
     headers = {'Accept': 'application/json', 'apikey': api_key}
     
     data = {"tweeted": True}
+
+    logger.debug(f"Headers for marking as tweeted: {headers}")
+
     
     try:
-        response = requests.patch(f"{update_endpoint}/{article_id}", headers=headers, json=data)
-        response.raise_for_status()
+        response = requests.patch(update_endpoint.format(id=article_id), headers=headers, json=data)
 
         if response.status_code == 200:
             logger.info(f"Successfully marked article with ID {article_id} as tweeted.")

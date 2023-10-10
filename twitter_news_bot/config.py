@@ -22,6 +22,7 @@ def load_config():
         'OPENAI_API_KEY': os.getenv("OPENAI_API_KEY"),
         'cannabis_news_api_key': os.getenv("CANNABISNEWSAPIKEY"),
         'CANNABIS_NEWS_ENDPOINT': os.getenv("CANNABIS_NEWS_ENDPOINT"),
+        'CANNABIS_NEWS_UPDATE_ENDPOINT': os.getenv("CANNABIS_NEWS_UPDATE_ENDPOINT"),
         'max_retries': 5,
         'max_total_attempts': 50
     }
