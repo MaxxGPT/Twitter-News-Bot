@@ -1,6 +1,6 @@
 import logging
 
-def setup_logger(log_file='application_errors.log', log_level=logging.INFO):
+def setup_logger(log_file='application_errors.log', log_level=logging.DEBUG):
     """
     Configures the logger with specified log file and log level.
     """
