@@ -26,8 +26,10 @@ def mark_as_tweeted(article_id, api_key, update_endpoint):
 
         if response.status_code == 200:
             logger.info(f"Successfully marked article with ID {article_id} as tweeted.")
+            return True
         else:
             logger.warning(f"Failed to mark article with ID {article_id} as tweeted. Response code: {response.status_code}")
+            return False
     
     except requests.exceptions.RequestException as e:
         logger.error(f"Error updating 'tweeted' status for article with ID {article_id}: {e}")
