@@ -1,0 +1,63 @@
+service: Cannabis_News_Bot
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: python3.9
+  stage: ${opt:stage, 'dev'}
+  region: us-east-1
+
+environment:
+  OPENAI_API_KEY: ${ssm:OPENAI_API_KEY}
+  TWITTER_CONSUMER_KEY: ${ssm:TWITTER_CONSUMER_KEY}
+  TWITTER_CONSUMER_SECRET: ${ssm:TWITTER_CONSUMER_SECRET}
+  TWITTER_ACCESS_TOKEN: ${ssm:TWITTER_ACCESS_TOKEN}
+  TWITTER_ACCESS_TOKEN_SECRET: ${ssm:TWITTER_ACCESS_TOKEN_SECRET}
+  TWITTER_BEARER_TOKEN: ${ssm:TWITTER_BEARER_TOKEN}
+  CANNABISNEWSAPIKEY: ${ssm:CANNABISNEWSAPIKEY}
+  CANNABIS_NEWS_ENDPOINT: ${ssm:CANNABIS_NEWS_ENDPOINT}
+  CANNABIS_NEWS_UPDATE_ENDPOINT: ${ssm:CANNABIS_NEWS_UPDATE_ENDPOINT}
+
+functions:
+  fetchNewsArticles:
+    handler: twitter_news_bot.data_fetcher.fetch_news_articles
+    events:
+      - http:
+          path: fetchNews
+          method: get
+
+  generateTweets:
+      handler: twitter_news_bot.openai_api.generate_tweet
+      events:
+        - http:
+            path: generateTweet
+            method: get
+
+  postTweets:
+      handler: twitter_news_bot.twitter_api_post_tweet
+      events:
+        - http:
+            path: postTweet
+            method: post
+
+  markAsTweeted:
+      handler: twitter_news_bot.data_fetcher.mark_as_tweeted
+      events:
+        - http:
+            path: markTweeted 
+            method: put
+
+package:
+  exclude:
+    - venv/**
+    - tests/**
+    - logs/**
+
+plugins:
+  - serverless-python-requirements
+  - serverless-offline
+  - serverless-dotenv-plugin
+custom:
+  pythonRequirements:
+    dockerizePip: non-linux
