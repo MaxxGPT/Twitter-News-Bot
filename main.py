@@ -20,7 +20,7 @@ def main():
 
         # Fetch a news article
         article_data = fetch_news_articles(
-            config['cannabis_news_api_key'], 
+            config['CANNABISNEWSAPIKEY'], 
             config['CANNABIS_NEWS_ENDPOINT'], 
             int(config['max_retries']), 
             int(config['max_total_attempts'])

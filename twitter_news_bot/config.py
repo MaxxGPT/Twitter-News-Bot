@@ -20,7 +20,7 @@ def initialize_twitter_api():
 def load_config():
     return {
         'OPENAI_API_KEY': os.getenv("OPENAI_API_KEY"),
-        'cannabis_news_api_key': os.getenv("CANNABISNEWSAPIKEY"),
+        'CANNABISNEWSAPIKEY': os.getenv("CANNABISNEWSAPIKEY"),
         'CANNABIS_NEWS_ENDPOINT': os.getenv("CANNABIS_NEWS_ENDPOINT"),
         'CANNABIS_NEWS_UPDATE_ENDPOINT': os.getenv("CANNABIS_NEWS_UPDATE_ENDPOINT"),
         'max_retries': 5,
