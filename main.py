@@ -1,6 +1,7 @@
 import logging
 from twitter_news_bot.config import load_config, initialize_twitter_api  
-from twitter_news_bot.data_fetcher import fetch_news_articles, mark_as_tweeted
+from twitter_news_bot.data_fetcher import fetch_news_articles
+from twitter_news_bot.data_updater import mark_as_tweeted
 from twitter_news_bot.openai_api import generate_tweet
 from twitter_news_bot.twitter_api import post_tweet  
 from twitter_news_bot.logger import setup_logger
