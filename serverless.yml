@@ -23,8 +23,8 @@ provider:
 
 functions:
   fetchNewsArticles:
-    handler: twitter_news_bot.data_fetcher.fetch_news_articles_lambda_handler
-    timeout: 10
+    handler: twitter_news_bot.data_fetcher.lambda_handler
+    timeout: 30
     events:
       - http:
           path: fetchNews

@@ -1,10 +1,35 @@
+import json
+import logging
 import requests
 import random
-from datetime import datetime
-import logging
+import os
 
 # Initialize logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+def lambda_handler(event, context):
+    # Fetch environment variables
+    api_key = os.environ.get('CANNABISNEWSAPIKEY')
+    endpoint = os.environ.get('CANNABIS_NEWS_ENDPOINT')
+    max_retries = int(os.environ.get('MAX_RETRIES', 5))
+    max_total_attempts = int(os.environ.get('MAX_TOTAL_ATTEMPTS', 50))
+
+    # Fetch articles
+    article = fetch_news_articles(api_key, endpoint, max_retries, max_total_attempts)
+    
+    if article:
+        logger.info(f"Successfully fetched article: {article['_id']}")
+        return {
+            'statusCode': 200,
+            'body': json.dumps('Success')
+        }
+    else:
+        logger.error("Failed to fetch any articles.")
+        return {
+            'statusCode': 500,
+            'body': json.dumps('Failed')
+        }
 
 def fetch_single_article(source_id, api_key, endpoint):
     params = {"limit": 1, "source_id": source_id, "tweeted": False}
@@ -61,7 +86,8 @@ def fetch_news_articles(api_key, endpoint, max_retries=5, max_total_attempts=50)
             retries += 1
             logger.warning(f"No articles found in batch {retries}. Retrying...")
             
-        logger.warning(f"Exhausted maximum retries ({max_retries}) for source {specific_source_id}. Moving to next source...")
+        logger.warning(f"Exhausted maximum retries ({max_retries}) for source {specific_source_id}. Total attempts: {total_attempts}. Moving to next source...")
+
         
     logger.error(f"Exhausted maximum total attempts ({max_total_attempts}) without finding an article.")
     return None
