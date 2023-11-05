@@ -30,6 +30,14 @@ functions:
           path: fetchNews
           method: get
 
+  generateTweet:
+    handler: twitter_news_bot.openai_api.lambda_handler
+    timeout: 30
+    events:
+      - http:
+          path: generateTweet
+          method: post
+
 
 package:
   exclude:

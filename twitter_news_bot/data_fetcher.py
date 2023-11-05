@@ -3,6 +3,7 @@ import logging
 import requests
 import random
 import os
+import boto3
 
 # Initialize logging
 logger = logging.getLogger()
@@ -17,18 +18,50 @@ def lambda_handler(event, context):
 
     # Fetch articles
     article = fetch_news_articles(api_key, endpoint, max_retries, max_total_attempts)
-    
+
     if article:
         logger.info(f"Successfully fetched article: {article['_id']}")
-        return {
-            'statusCode': 200,
-            'body': json.dumps('Success')
+
+        # Initialize Lambda client
+        lambda_port = 3002 if os.environ.get('IS_OFFLINE') else None
+        endpoint_url = f'http://localhost:{lambda_port}' if lambda_port else None   
+        lambda_client = boto3.client('lambda', region_name='us-west-2', endpoint_url=endpoint_url)
+        
+        # Change function name here
+        functionName = 'cannabis-news-bot-dev-generateTweet'
+        
+        # Prepare payload
+        payload = {
+            "article_data": article
         }
+
+        # Trigger generateTweet Lambda function
+        try:
+            response = lambda_client.invoke(
+                FunctionName=functionName,  # Updated FunctionName
+                InvocationType='Event',
+                Payload=json.dumps(payload).encode('utf-8')
+            )
+
+            logger.info(f"Invoked {functionName} Lambda function asynchronously with article ID: {article['_id']}")
+
+            # Return a response to API Gateway indicating successful invocation
+            return {
+                'statusCode': 202,  # 202 Accepted status code for async processing
+                'body': json.dumps({'message': 'Accepted article for processing'})
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to invoke {functionName} Lambda function: {e}, type: {type(e)}, args: {e.args}")
+            return {
+                'statusCode': 500,
+                'body': json.dumps({'message': 'Failed to invoke generateTweet Lambda function'})
+            }
     else:
-        logger.error("Failed to fetch any articles.")
+        # Return a response to API Gateway indicating no article was found
         return {
-            'statusCode': 500,
-            'body': json.dumps('Failed')
+            'statusCode': 404,
+            'body': json.dumps({'message': 'No article found'})
         }
 
 def fetch_single_article(source_id, api_key, endpoint):

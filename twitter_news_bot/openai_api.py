@@ -1,9 +1,49 @@
+from urllib import response
 import openai
 from datetime import datetime
 from nltk.tokenize import sent_tokenize
 import logging
+import json
+import os
+import traceback
 
-logger = logging.getLogger(__name__)
+# Initialize logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+def lambda_handler(event, context):
+    event_body = event  # Directly use the event as the event_body, no need for json.loads
+
+    # Check for a dictionary type for event_body
+    if isinstance(event_body, dict):
+        article_data = event_body.get('article_data', {})
+    else:
+        logger.error("Event body is not a dictionary.")
+        article_data = {}
+
+    title = article_data.get('title', 'N/A')  # This line remains unchanged
+    openai_api_key = os.environ.get('OPENAI_API_KEY')  # This line remains unchanged
+
+    try:
+        generated_tweet = generate_tweet(article_data, openai_api_key) if article_data else None
+        if generated_tweet:
+            logger.info(f"Successfully generated tweet: {generated_tweet}")
+            logger.info("Lambda handler has finished executing and is about to return success response")  # Additional log
+            response = {
+                'statusCode': 200,
+                'body': json.dumps({'message': 'Success'})
+            }
+            logger.info(f"About to return from lambda_handler: {response}")
+            return response
+
+    except Exception as e:
+        logger.error(f"Failed to generate tweet: {str(e)}")
+        traceback.print_exc()  # Log the traceback
+        logger.info("About to return failure response from lambda_handler")  # Additional log
+        return {
+            'statusCode': 500,
+            'body': json.dumps('Failed')
+        }
 
 def generate_tweet(article_data, openai_api_key, max_tweet_length=280):
     logger.debug(f"Received article data: {article_data}")
@@ -36,6 +76,7 @@ def generate_tweet(article_data, openai_api_key, max_tweet_length=280):
 
         # Post-process generated tweet
         generated_tweet = response.choices[0].message['content'].strip()
+        logger.debug(f"Generated Tweet: {generated_tweet}")
 
         # Assemble the full tweet
         full_tweet = f"{generated_tweet}\nurl: {article_data['url']}\nSentiment: {article_data['sentiment']}\nTopic: {article_data['topic']}\n#Cannabis #Marijuana"
@@ -62,4 +103,5 @@ def generate_tweet(article_data, openai_api_key, max_tweet_length=280):
 
     except Exception as e:
         logger.error(f"Failed to generate tweet: {e}")
+        traceback.print_exc()
         return None
