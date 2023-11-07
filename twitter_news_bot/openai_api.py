@@ -6,6 +6,8 @@ import logging
 import json
 import os
 import traceback
+import boto3
+
 
 # Initialize logging
 logger = logging.getLogger()
@@ -28,7 +30,31 @@ def lambda_handler(event, context):
         generated_tweet = generate_tweet(article_data, openai_api_key) if article_data else None
         if generated_tweet:
             logger.info(f"Successfully generated tweet: {generated_tweet}")
+
+            # Check if running offline
+            lambda_port = 3002 if os.environ.get('IS_OFFLINE') else None
+            endpoint_url = f'http://localhost:{lambda_port}' if lambda_port else None
+
+            # Initialize Lambda client
+            lambda_client = boto3.client('lambda', endpoint_url=endpoint_url) if endpoint_url else boto3.client('lambda')
+
+            # Function name from serverless.yaml
+            functionName = 'cannabis-news-bot-dev-postTweet' if lambda_port else 'postTweet'
+
+            # Prepare the payload for twitter_api.py Lambda function
+            payload = {
+                'tweet_content': generated_tweet
+            }
+
+            # Invoke twitter_api.py Lambda function asynchronously
+            lambda_client.invoke(
+                FunctionName=functionName,  # Make sure this matches the actual name of the deployed Lambda function
+                InvocationType='Event',
+                Payload=json.dumps(payload)
+            )
+            
             logger.info("Lambda handler has finished executing and is about to return success response")  # Additional log
+            
             response = {
                 'statusCode': 200,
                 'body': json.dumps({'message': 'Success'})
@@ -65,7 +91,7 @@ def generate_tweet(article_data, openai_api_key, max_tweet_length=280):
         
         # OpenAI API call
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-4-1106-preview",
             messages=messages,
             temperature=0.5,
             max_tokens=content_max_tokens

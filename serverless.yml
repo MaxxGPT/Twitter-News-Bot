@@ -37,6 +37,14 @@ functions:
       - http:
           path: generateTweet
           method: post
+    
+  postTweet:
+    handler: twitter_news_bot.twitter_api.lambda_handler
+    timeout: 30
+    events:
+      - http:
+        path: postTweet
+        method: post
 
 
 package:
